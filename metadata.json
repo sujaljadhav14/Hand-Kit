@@ -1,0 +1,7 @@
+{
+  "name": "HandTouch Particles",
+  "description": "A mesmerizing interactive particle system controlled by your hand movements using computer vision.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
