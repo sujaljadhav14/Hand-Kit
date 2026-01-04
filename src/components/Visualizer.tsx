@@ -26,6 +26,34 @@ export const Visualizer: React.FC<VisualizerProps> = ({ config, setFps, currentM
   const [isLoading, setIsLoading] = useState(true);
   const [cameraError, setCameraError] = useState<string | null>(null);
 
+  // Handlers for webcam permission and debugging
+  const handleUserMedia = useCallback(() => {
+    setCameraError(null);
+    setIsLoading(false);
+    console.log('Webcam: user media granted');
+  }, []);
+
+  const handleUserMediaError = useCallback((err: any) => {
+    console.error('Webcam permission error:', err);
+    setCameraError('Camera access denied or not available. Check browser permissions.');
+    setIsLoading(false);
+  }, []);
+
+  const requestCamera = useCallback(async () => {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setCameraError('Camera API not supported in this browser.');
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      // stop tracks immediately; react-webcam will re-acquire when mounted
+      stream.getTracks().forEach(t => t.stop());
+      handleUserMedia();
+    } catch (err) {
+      handleUserMediaError(err);
+    }
+  }, [handleUserMedia, handleUserMediaError]);
+
   const landmarksRef = useRef<any[]>([]);
   const gestureRef = useRef<HandGesture>('NONE');
   const lastSwitchTimeRef = useRef<number>(0);
@@ -408,12 +436,20 @@ export const Visualizer: React.FC<VisualizerProps> = ({ config, setFps, currentM
                 <CameraIcon className="w-16 h-16 text-red-500 mb-6" />
                 <h2 className="text-2xl font-bold mb-2">Camera Error</h2>
                 <p className="text-gray-300 max-w-md">{cameraError}</p>
-                <button 
-                    onClick={() => window.location.reload()}
-                    className="mt-8 px-6 py-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
-                >
-                    Reload Page
-                </button>
+                <div className="mt-6 flex gap-4">
+                  <button 
+                      onClick={requestCamera}
+                      className="px-6 py-2 bg-green-600 hover:bg-green-700 rounded-full transition-colors"
+                  >
+                      Enable Camera
+                  </button>
+                  <button 
+                      onClick={() => window.location.reload()}
+                      className="px-6 py-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
+                  >
+                      Reload Page
+                  </button>
+                </div>
             </div>
         )}
         <div className="relative w-full h-full">
@@ -424,6 +460,10 @@ export const Visualizer: React.FC<VisualizerProps> = ({ config, setFps, currentM
                 height={VIDEO_HEIGHT}
                 screenshotFormat="image/jpeg"
                 videoConstraints={{ width: VIDEO_WIDTH, height: VIDEO_HEIGHT, facingMode: "user" }}
+                onUserMedia={handleUserMedia}
+                onUserMediaError={handleUserMediaError}
+                playsInline
+                autoPlay
                 className="absolute inset-0 w-full h-full object-cover scale-x-[-1] opacity-0" // Hide webcam, only show particles
             />
             <canvas
